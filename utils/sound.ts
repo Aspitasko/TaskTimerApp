@@ -31,3 +31,16 @@ export const playAlertSound = () => {
     console.error("Audio playback failed", e);
   }
 };
+
+// Chime sound that plays the timer end MP3 file
+export const playChimeSound = () => {
+  try {
+    const audio = new Audio('/soundeffect/timerend.mp3');
+    audio.volume = 0.7;
+    audio.play().catch(err => {
+      console.error("Failed to play timer sound", err);
+    });
+  } catch (e) {
+    console.error("Audio playback failed", e);
+  }
+};

@@ -2,7 +2,7 @@ import React, { useEffect, useRef, useState } from 'react';
 import { Timer, TimerType, PomodoroType } from '../types';
 import { PlayIcon, PauseIcon, RotateCcwIcon, SettingsIcon, TrashIcon, ClockIcon, StopwatchIcon, CoffeeIcon, MaximizeIcon, MinimizeIcon } from './Icons';
 import CircularProgress from './CircularProgress';
-import { playAlertSound } from '../utils/sound';
+import { playAlertSound, playChimeSound } from '../utils/sound';
 
 interface TimerCardProps {
   timer: Timer;
@@ -62,10 +62,15 @@ const TimerCard: React.FC<TimerCardProps> = ({ timer, onToggle, onReset, onDelet
   const prevCompleted = useRef(timer.isCompleted);
   useEffect(() => {
     if (timer.isCompleted && !prevCompleted.current) {
-      playAlertSound();
+      // Play chime for regular timers, alert for stopwatch
+      if (timer.type === 'STOPWATCH') {
+        playAlertSound();
+      } else {
+        playChimeSound();
+      }
     }
     prevCompleted.current = timer.isCompleted;
-  }, [timer.isCompleted]);
+  }, [timer.isCompleted, timer.type]);
 
   // Focus input when editing starts
   useEffect(() => {
