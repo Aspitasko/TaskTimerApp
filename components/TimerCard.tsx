@@ -223,10 +223,10 @@ const TimerCard: React.FC<TimerCardProps> = ({ timer, onToggle, onReset, onDelet
         {/* Fullscreen Current Time */}
         {isFullscreen && (
             <div className="absolute top-4 right-4 md:top-8 md:right-8 flex flex-col items-end z-50 animate-fade-in">
-                <div className="text-neutral-500 font-mono text-lg md:text-xl font-medium tracking-wider">
+                <div className="text-neutral-500 font-mono text-2xl md:text-4xl font-medium tracking-wider">
                     {currentTime}
                 </div>
-                <div className="text-neutral-600 font-sans text-xs md:text-sm font-medium mt-1">
+                <div className="text-neutral-600 font-sans text-sm md:text-lg font-medium mt-2">
                     {currentDate}
                 </div>
             </div>

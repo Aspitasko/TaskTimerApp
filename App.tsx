@@ -222,9 +222,9 @@ function App() {
       <div className="fixed top-4 right-4 md:top-8 md:right-8 z-50 animate-fade-in flex flex-col items-end gap-2 md:flex-row md:items-center md:gap-3 pointer-events-none">
           <div className="pointer-events-auto flex items-center gap-2">
             {/* Clock & Date */}
-            <div className="px-3 py-1.5 md:px-4 md:py-2 rounded-full bg-[#111]/80 backdrop-blur-md border border-neutral-800 flex items-center gap-2 md:gap-3 justify-center text-neutral-400 shadow-lg text-xs md:text-sm">
+            <div className="px-4 py-2 md:px-5 md:py-2.5 rounded-full bg-[#111]/80 backdrop-blur-md border border-neutral-800 flex items-center gap-2 md:gap-3 justify-center text-neutral-400 shadow-lg text-sm md:text-lg">
               <span className="font-medium text-neutral-500 whitespace-nowrap">{currentDate}</span>
-              <span className="w-px h-3 bg-neutral-800"></span>
+              <span className="w-px h-4 bg-neutral-800"></span>
               <span className="font-mono text-neutral-300">{currentTime}</span>
             </div>
           </div>
