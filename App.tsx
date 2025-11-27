@@ -3,6 +3,7 @@ import { Timer, TimerType, Preset } from './types';
 import TimerCard from './components/TimerCard';
 import DynamicIsland from './components/DynamicIsland';
 import AddTimer from './components/AddTimer';
+import Weather from './components/Weather';
 import { MaximizeIcon, MinimizeIcon } from './components/Icons';
 
 function App() {
@@ -10,16 +11,36 @@ function App() {
   const [lastTick, setLastTick] = useState<number>(Date.now());
   const [currentTime, setCurrentTime] = useState<string>("");
   const [currentDate, setCurrentDate] = useState<string>("");
+  const [fullDate, setFullDate] = useState<string>("");
+  const [greeting, setGreeting] = useState<string>("");
   const [isFullscreen, setIsFullscreen] = useState(false);
+  const [isClockFullscreen, setIsClockFullscreen] = useState(false);
   const [customPresets, setCustomPresets] = useState<Preset[]>([]);
 
   // --- Clock ---
   useEffect(() => {
     const updateTime = () => {
         const now = new Date();
+        const hour = now.getHours();
+        
+        // Determine greeting
+        let greet = '';
+        if (hour >= 5 && hour < 12) {
+          greet = 'Good Morning';
+        } else if (hour >= 12 && hour < 17) {
+          greet = 'Good Afternoon';
+        } else if (hour >= 17 && hour < 21) {
+          greet = 'Good Evening';
+        } else {
+          greet = 'Good Night';
+        }
+        
         setCurrentTime(now.toLocaleTimeString([], { hour: 'numeric', minute: '2-digit', second: '2-digit', hour12: true }));
         // Compact date for mobile, full for desktop if needed
         setCurrentDate(now.toLocaleDateString([], { weekday: 'short', month: 'short', day: 'numeric' }));
+        // Full date for fullscreen mode
+        setFullDate(now.toLocaleDateString([], { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' }));
+        setGreeting(greet);
     };
     updateTime();
     const interval = setInterval(updateTime, 1000);
@@ -43,6 +64,27 @@ function App() {
     } else {
       if (document.exitFullscreen) {
         document.exitFullscreen();
+      }
+    }
+  };
+
+  // --- Clock Fullscreen Handler ---
+  const clockRef = React.useRef<HTMLDivElement>(null);
+
+  const toggleClockFullscreen = async () => {
+    if (!document.fullscreenElement) {
+      if (clockRef.current) {
+        try {
+          await clockRef.current.requestFullscreen();
+          setIsClockFullscreen(true);
+        } catch (err) {
+          console.error("Error attempting to enable clock fullscreen:", err);
+        }
+      }
+    } else {
+      if (document.exitFullscreen) {
+        await document.exitFullscreen();
+        setIsClockFullscreen(false);
       }
     }
   };
@@ -221,11 +263,51 @@ function App() {
       {/* Header controls (Top Right) */}
       <div className="fixed top-4 right-4 md:top-8 md:right-8 z-50 animate-fade-in flex flex-col items-end gap-2 md:flex-row md:items-center md:gap-3 pointer-events-none">
           <div className="pointer-events-auto flex items-center gap-2">
+            {/* Weather */}
+            <Weather />
+
             {/* Clock & Date */}
-            <div className="px-4 py-2 md:px-5 md:py-2.5 rounded-full bg-[#111]/80 backdrop-blur-md border border-neutral-800 flex items-center gap-2 md:gap-3 justify-center text-neutral-400 shadow-lg text-sm md:text-lg">
-              <span className="font-medium text-neutral-500 whitespace-nowrap">{currentDate}</span>
-              <span className="w-px h-4 bg-neutral-800"></span>
-              <span className="font-mono text-neutral-300">{currentTime}</span>
+            <div 
+              ref={clockRef}
+              onClick={toggleClockFullscreen}
+              className={`px-3 py-1.5 md:px-4 md:py-2 rounded-full bg-[#111]/80 backdrop-blur-md border border-neutral-800 flex items-center gap-2 md:gap-3 justify-center text-neutral-400 shadow-lg text-xs md:text-sm cursor-pointer hover:border-neutral-600 transition-colors
+                ${isClockFullscreen 
+                  ? 'fixed inset-0 z-50 w-full h-full justify-center items-center rounded-none border-none text-6xl md:text-8xl' 
+                  : ''
+                }`}
+            >
+              {isClockFullscreen ? (
+                <div className="flex flex-col items-center justify-center gap-8">
+                  <div className="text-neutral-400 font-sans text-3xl md:text-5xl font-light tracking-wide mb-4">
+                    {greeting}
+                  </div>
+                  <div className="font-mono text-white font-medium tracking-wider text-6xl md:text-8xl">
+                    {currentTime}
+                  </div>
+                  <div className="text-neutral-400 font-sans text-xl md:text-2xl font-medium mt-8">
+                    {fullDate}
+                  </div>
+                  <div className="mt-8 flex justify-center">
+                    <Weather />
+                  </div>
+                  <button
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      toggleClockFullscreen();
+                    }}
+                    className="absolute bottom-8 right-8 p-3 rounded-full bg-[#111]/80 backdrop-blur-md border border-neutral-800 text-neutral-400 hover:text-white hover:border-neutral-600 transition-colors"
+                    title="Exit Clock View"
+                  >
+                    <MinimizeIcon className="w-6 h-6" />
+                  </button>
+                </div>
+              ) : (
+                <>
+                  <span className="font-medium text-neutral-500 whitespace-nowrap">{currentDate}</span>
+                  <span className="w-px h-3 bg-neutral-800"></span>
+                  <span className="font-mono text-neutral-300">{currentTime}</span>
+                </>
+              )}
             </div>
           </div>
       </div>
