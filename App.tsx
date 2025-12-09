@@ -275,7 +275,7 @@ function App() {
       <DynamicIsland onAdd={addTimer} activeTimer={activeTimer} />
 
       {/* Header controls (Top Right) */}
-      <div className="fixed top-4 right-4 md:top-8 md:right-8 z-50 animate-fade-in flex flex-col items-end gap-2 md:flex-row md:items-center md:gap-3 pointer-events-none">
+      <div className="fixed top-6 right-6 md:top-10 md:right-10 z-50 animate-fade-in flex flex-col items-end gap-3 md:flex-row md:items-center md:gap-4 pointer-events-none">
           <div className="pointer-events-auto flex items-center gap-2">
             {/* Weather */}
             <Weather />
@@ -412,17 +412,17 @@ function App() {
       {/* Fullscreen Toggle (Bottom Right) */}
       <button 
         onClick={toggleFullscreen}
-        className="fixed bottom-4 right-4 md:bottom-8 md:right-8 z-50 p-2 md:p-3 rounded-full bg-[#111]/80 backdrop-blur-md border border-neutral-800 text-neutral-400 hover:text-white hover:border-neutral-600 transition-colors shadow-lg"
+        className="fixed bottom-6 right-6 md:bottom-10 md:right-10 z-50 p-3 md:p-4 rounded-full bg-[#111]/80 backdrop-blur-md border border-neutral-800 text-neutral-400 hover:text-white hover:border-neutral-600 transition-colors shadow-lg hover:bg-neutral-900/80"
         title={isFullscreen ? "Exit Fullscreen" : "Enter Fullscreen"}
       >
-        {isFullscreen ? <MinimizeIcon className="w-4 h-4 md:w-5 md:h-5" /> : <MaximizeIcon className="w-4 h-4 md:w-5 md:h-5" />}
+        {isFullscreen ? <MinimizeIcon className="w-5 h-5 md:w-6 md:h-6" /> : <MaximizeIcon className="w-5 h-5 md:w-6 md:h-6" />}
       </button>
 
       {/* Scrollable Main Content */}
-      <div className="flex-grow flex flex-col items-center w-full relative z-10 px-4 pt-28 md:pt-32 pb-16">
+      <div className="flex-grow flex flex-col items-center w-full relative z-10 px-6 md:px-8 pt-32 md:pt-40 pb-24 md:pb-32">
         
         {/* Timer Grid */}
-        <div className="flex flex-wrap items-center justify-center gap-6 md:gap-8 w-full max-w-[1200px]">
+        <div className="flex flex-wrap items-center justify-center gap-8 md:gap-10 lg:gap-12 w-full max-w-[1400px]">
             {timers.map(timer => (
                 <TimerCard
                     key={timer.id}
@@ -436,7 +436,7 @@ function App() {
         </div>
 
         {/* Add Timer Button Area */}
-        <div className="mt-12 md:mt-16 mb-8 w-full">
+        <div className="mt-16 md:mt-20 lg:mt-24 mb-12 w-full max-w-[1400px]">
             <AddTimer 
                 onAdd={addTimer} 
                 customPresets={customPresets} 
@@ -446,8 +446,8 @@ function App() {
         </div>
 
         {/* Footer */}
-        <footer className="mt-auto py-6 text-center">
-            <p className="text-neutral-700 text-sm font-medium">Made by Mistiz911 and Aspitasko</p>
+        <footer className="mt-auto pt-8 md:pt-12 pb-4 text-center">
+            <p className="text-neutral-700 text-xs md:text-sm font-medium">Made by Mistiz911 and Aspitasko</p>
         </footer>
 
       </div>
