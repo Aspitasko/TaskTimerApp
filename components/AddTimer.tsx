@@ -1,15 +1,20 @@
 import React, { useState } from 'react';
-import { PRESETS, TimerType, Preset } from '../types';
+import { PRESETS, TimerType, Preset, TimerStack } from '../types';
 import { PlusIcon, TrashIcon, SettingsIcon } from './Icons';
+import StackTimers from './StackTimers';
 
 interface AddTimerProps {
   onAdd: (type: TimerType, duration: number, label: string, note?: string) => void;
   customPresets: Preset[];
   onSavePreset: (preset: Preset) => void;
   onDeletePreset: (label: string) => void;
+  onAddStack?: (stack: TimerStack) => void;
+  onDeleteStack?: (stackId: string) => void;
+  onRunStack?: (stackId: string) => void;
+  stacks?: TimerStack[];
 }
 
-const AddTimer: React.FC<AddTimerProps> = ({ onAdd, customPresets, onSavePreset, onDeletePreset }) => {
+const AddTimer: React.FC<AddTimerProps> = ({ onAdd, customPresets, onSavePreset, onDeletePreset, onAddStack, onDeleteStack, onRunStack, stacks = [] }) => {
   const [isOpen, setIsOpen] = useState(false);
   const [isCustomMode, setIsCustomMode] = useState(false);
   
@@ -200,6 +205,7 @@ const AddTimer: React.FC<AddTimerProps> = ({ onAdd, customPresets, onSavePreset,
             </button>
         </div>
       )}
+
     </div>
   );
 };

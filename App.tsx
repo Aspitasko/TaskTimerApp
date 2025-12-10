@@ -1,9 +1,10 @@
 import React, { useState, useEffect } from 'react';
-import { Timer, TimerType, Preset } from './types';
+import { Timer, TimerType, Preset, TimerStack } from './types';
 import TimerCard from './components/TimerCard';
 import DynamicIsland from './components/DynamicIsland';
 import AddTimer from './components/AddTimer';
 import Weather from './components/Weather';
+import StackTimers from './components/StackTimers';
 import { MaximizeIcon, MinimizeIcon } from './components/Icons';
 
 function App() {
@@ -19,6 +20,7 @@ function App() {
   const [clockReminder, setClockReminder] = useState<string>("");
   const [showReminderInput, setShowReminderInput] = useState(false);
   const [reminderText, setReminderText] = useState<string>("");
+  const [timerStacks, setTimerStacks] = useState<TimerStack[]>([]);
 
   // --- Clock ---
   useEffect(() => {
@@ -124,6 +126,14 @@ function App() {
     if (savedReminder) {
       setClockReminder(savedReminder);
     }
+
+    // Load timer stacks
+    const savedStacks = localStorage.getItem('chronos_stacks');
+    if (savedStacks) {
+      try {
+        setTimerStacks(JSON.parse(savedStacks));
+      } catch (e) { console.error(e); }
+    }
   }, []);
 
   const initializeDefaultTimer = () => {
@@ -145,6 +155,12 @@ function App() {
         localStorage.setItem('chronos_timers', JSON.stringify(timers));
     }
   }, [timers]);
+
+  useEffect(() => {
+    if (timerStacks.length > 0) {
+      localStorage.setItem('chronos_stacks', JSON.stringify(timerStacks));
+    }
+  }, [timerStacks]);
 
   // --- Ticker ---
   useEffect(() => {
@@ -231,7 +247,48 @@ function App() {
       localStorage.setItem('chronos_presets', JSON.stringify(updated));
   }
 
-  // --- Keyboard Shortcuts ---
+  const handleAddStack = (stack: TimerStack) => {
+    setTimerStacks(prev => [...prev, stack]);
+  };
+
+  const handleDeleteStack = (stackId: string) => {
+    setTimerStacks(prev => prev.filter(s => s.id !== stackId));
+  };
+
+  const handleRunStack = (stackId: string) => {
+    const stack = timerStacks.find(s => s.id === stackId);
+    if (!stack) return;
+
+    if (stack.isRecurring) {
+      // For recurring stacks, create one timer that represents the whole stack
+      const totalDuration = stack.timers.reduce((sum, t) => sum + t.duration, 0);
+      const phasesList = stack.timers.map((t, i) => `${i + 1}. ${t.note || `Phase ${i + 1}`} (${Math.floor(t.duration / 60)}m)`).join('\n');
+      const note = `🔁 Recurring Stack\n\n${phasesList}`;
+      
+      const newTimer = addTimer('TIMER', totalDuration, stack.name, note);
+      if (newTimer) {
+        setTimeout(() => toggleTimer(newTimer), 100);
+      }
+    } else {
+      // For non-recurring stacks, create separate timers for each phase
+      let cumulativeDelay = 0;
+      
+      stack.timers.forEach((stackedTimer, index) => {
+        setTimeout(() => {
+          const phaseName = stackedTimer.note || `Phase ${index + 1}`;
+          const note = stackedTimer.description || undefined;
+          const newTimer = addTimer('TIMER', stackedTimer.duration, `${stack.name} - ${phaseName}`, note);
+          
+          // Auto-start the timer
+          if (newTimer) {
+            setTimeout(() => toggleTimer(newTimer), 100);
+          }
+        }, cumulativeDelay);
+        
+        cumulativeDelay += stackedTimer.duration * 1000;
+      });
+    }
+  };
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
       if (['INPUT', 'TEXTAREA'].includes((e.target as HTMLElement).tagName)) return;
@@ -265,18 +322,23 @@ function App() {
   return (
     <div className="w-full min-h-screen bg-[#050505] relative flex flex-col font-sans selection:bg-white/20">
       
-      {/* Background Ambience - Fixed */}
-      <div className="fixed inset-0 overflow-hidden pointer-events-none z-0">
-          <div className="absolute top-[-20%] left-[-10%] w-[50%] h-[50%] bg-purple-900/10 blur-[150px] rounded-full"></div>
-          <div className="absolute bottom-[-20%] right-[-10%] w-[50%] h-[50%] bg-blue-900/5 blur-[150px] rounded-full"></div>
-      </div>
-
       {/* Dynamic Island Status - Fixed on top */}
       <DynamicIsland onAdd={addTimer} activeTimer={activeTimer} />
 
       {/* Header controls (Top Right) */}
       <div className="fixed top-6 right-6 md:top-10 md:right-10 z-50 animate-fade-in flex flex-col items-end gap-3 md:flex-row md:items-center md:gap-4 pointer-events-none">
           <div className="pointer-events-auto flex items-center gap-2">
+            {/* Stack Timers Button */}
+            <div className="flex">
+              <StackTimers 
+                stacks={timerStacks}
+                onCreateStack={handleAddStack}
+                onDeleteStack={handleDeleteStack}
+                onRunStack={handleRunStack}
+                isFloating={true}
+              />
+            </div>
+
             {/* Weather */}
             <Weather />
 
@@ -418,6 +480,73 @@ function App() {
         {isFullscreen ? <MinimizeIcon className="w-5 h-5 md:w-6 md:h-6" /> : <MaximizeIcon className="w-5 h-5 md:w-6 md:h-6" />}
       </button>
 
+      {/* Left Sidebar - Saved Stacks */}
+      {timerStacks.length > 0 && (
+        <div className="fixed left-6 top-32 bottom-24 z-40 w-64 overflow-y-auto hidden lg:block">
+          <div className="space-y-3">
+            <h3 className="text-sm font-bold text-neutral-400 mb-4 uppercase tracking-wider">Saved Stacks</h3>
+            {timerStacks.map((stack) => (
+              <div key={stack.id} className="p-4 rounded-xl bg-neutral-900/50 border border-neutral-800 hover:border-neutral-700 transition-all hover:shadow-lg">
+                <div className="flex items-start justify-between mb-3">
+                  <div className="flex-1">
+                    <h4 className="text-white font-bold text-sm">{stack.name}</h4>
+                    <p className="text-neutral-400 text-xs mt-1.5 flex items-center gap-2">
+                      <span className="inline-flex items-center gap-1">
+                        <svg className="w-3 h-3" fill="currentColor" viewBox="0 0 20 20">
+                          <path d="M9 2a1 1 0 000 2h2a1 1 0 100-2H9z"/>
+                          <path fillRule="evenodd" d="M4 5a2 2 0 012-2 3 3 0 003 3h2a3 3 0 003-3 2 2 0 012 2v11a2 2 0 01-2 2H6a2 2 0 01-2-2V5zm3 4a1 1 0 000 2h.01a1 1 0 100-2H7zm3 0a1 1 0 000 2h3a1 1 0 100-2h-3zm-3 4a1 1 0 100 2h.01a1 1 0 100-2H7zm3 0a1 1 0 100 2h3a1 1 0 100-2h-3z" clipRule="evenodd"/>
+                        </svg>
+                        {stack.timers.length} phase{stack.timers.length !== 1 ? 's' : ''}
+                      </span>
+                      {stack.isRecurring && (
+                        <span className="text-purple-400 inline-flex items-center gap-1">
+                          <svg className="w-3 h-3" fill="currentColor" viewBox="0 0 20 20">
+                            <path fillRule="evenodd" d="M4 2a1 1 0 011 1v2.101a7.002 7.002 0 0111.601 2.566 1 1 0 11-1.885.666A5.002 5.002 0 005.999 7H9a1 1 0 010 2H4a1 1 0 01-1-1V3a1 1 0 011-1zm.008 9.057a1 1 0 011.276.61A5.002 5.002 0 0014.001 13H11a1 1 0 110-2h5a1 1 0 011 1v5a1 1 0 11-2 0v-2.101a7.002 7.002 0 01-11.601-2.566 1 1 0 01.61-1.276z" clipRule="evenodd"/>
+                          </svg>
+                          Recurring
+                        </span>
+                      )}
+                    </p>
+                  </div>
+                  <button
+                    onClick={() => handleDeleteStack(stack.id)}
+                    className="p-1.5 text-neutral-500 hover:text-red-500 hover:bg-red-500/10 rounded-lg transition-all"
+                    title="Delete stack"
+                  >
+                    <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 20 20">
+                      <path fillRule="evenodd" d="M9 2a1 1 0 00-.894.553L7.382 4H4a1 1 0 000 2v10a2 2 0 002 2h8a2 2 0 002-2V6a1 1 0 100-2h-3.382l-.724-1.447A1 1 0 0011 2H9zM7 8a1 1 0 012 0v6a1 1 0 11-2 0V8zm5-1a1 1 0 00-1 1v6a1 1 0 102 0V8a1 1 0 00-1-1z" clipRule="evenodd"/>
+                    </svg>
+                  </button>
+                </div>
+                
+                <div className="space-y-1.5 mb-3 p-2.5 rounded-lg bg-neutral-900/80 border border-neutral-800">
+                  {stack.timers.map((timer, idx) => (
+                    <div key={timer.id} className="text-xs text-neutral-300 flex items-start gap-2">
+                      <span className="text-blue-400 font-semibold min-w-[16px]">{idx + 1}.</span>
+                      <span className="flex-1">
+                        <span className="text-white font-medium">{timer.note || `Phase ${idx + 1}`}</span>
+                        <span className="text-blue-300"> • {Math.floor(timer.duration / 60)}m</span>
+                        {timer.description && <span className="text-neutral-400 block mt-0.5 text-[10px]">{timer.description}</span>}
+                      </span>
+                    </div>
+                  ))}
+                </div>
+
+                <button
+                  onClick={() => handleRunStack(stack.id)}
+                  className="w-full px-3 py-2 rounded-lg bg-gradient-to-r from-green-600 to-emerald-600 hover:from-green-700 hover:to-emerald-700 text-white font-bold transition-all text-xs shadow-lg hover:shadow-green-600/30 flex items-center justify-center gap-1.5"
+                >
+                  <svg className="w-3 h-3" fill="currentColor" viewBox="0 0 20 20">
+                    <path d="M6.3 2.841A1.5 1.5 0 004 4.11V15.89a1.5 1.5 0 002.3 1.269l9.344-5.89a1.5 1.5 0 000-2.538L6.3 2.84z"/>
+                  </svg>
+                  Run Stack
+                </button>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+
       {/* Scrollable Main Content */}
       <div className="flex-grow flex flex-col items-center w-full relative z-10 px-6 md:px-8 pt-32 md:pt-40 pb-24 md:pb-32">
         
@@ -442,6 +571,10 @@ function App() {
                 customPresets={customPresets} 
                 onSavePreset={handleSavePreset}
                 onDeletePreset={handleDeletePreset}
+                onAddStack={handleAddStack}
+                onDeleteStack={handleDeleteStack}
+                onRunStack={handleRunStack}
+                stacks={timerStacks}
             />
         </div>
 

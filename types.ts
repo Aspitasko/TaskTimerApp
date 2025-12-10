@@ -23,6 +23,22 @@ export interface Preset {
   note?: string; // Optional note/description
 }
 
+export interface StackedTimer {
+  id: string;
+  duration: number; // In seconds
+  note?: string; // Phase name/label
+  description?: string; // Additional description/note
+  order: number;
+}
+
+export interface TimerStack {
+  id: string;
+  name: string;
+  timers: StackedTimer[];
+  isRecurring: boolean;
+  createdAt: number;
+}
+
 export const PRESETS: Preset[] = [
   { label: 'Pomodoro', duration: 25 * 60, type: 'POMODORO' },
   { label: 'Short Break', duration: 5 * 60, type: 'POMODORO' },
