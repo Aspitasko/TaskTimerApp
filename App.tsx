@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Timer, TimerType, Preset, TimerStack } from './types';
+import { Timer, TimerType, Preset, TimerStack, StackedTimer } from './types';
 import TimerCard from './components/TimerCard';
 import DynamicIsland from './components/DynamicIsland';
 import AddTimer from './components/AddTimer';
@@ -169,22 +169,57 @@ function App() {
       const deltaSeconds = (now - lastTick) / 1000;
       setLastTick(now);
 
-      setTimers(prevTimers => prevTimers.map(timer => {
-        if (!timer.isRunning || timer.isCompleted) return timer;
+      setTimers(prevTimers => {
+        const updatedTimers = prevTimers.map(timer => {
+          if (!timer.isRunning || timer.isCompleted) return timer;
 
-        if (timer.type === 'STOPWATCH') {
-          return { ...timer, elapsedTime: timer.elapsedTime + deltaSeconds };
-        } else {
-          const newRemaining = Math.max(0, timer.remainingTime - deltaSeconds);
-          const isFinished = newRemaining <= 0;
-          return { 
-            ...timer, 
-            remainingTime: newRemaining, 
-            isCompleted: isFinished,
-            isRunning: !isFinished
-          };
-        }
-      }));
+          if (timer.type === 'STOPWATCH') {
+            return { ...timer, elapsedTime: timer.elapsedTime + deltaSeconds };
+          } else {
+            const newRemaining = Math.max(0, timer.remainingTime - deltaSeconds);
+            const isFinished = newRemaining <= 0;
+            
+            // If this timer just finished and it's part of a stack with more phases
+            if (isFinished && timer.stackPhases && timer.currentPhaseIndex !== undefined) {
+              const nextPhaseIndex = timer.currentPhaseIndex + 1;
+              
+              if (nextPhaseIndex < timer.stackPhases.length) {
+                // Move to next phase - update the same timer
+                const nextPhase = timer.stackPhases[nextPhaseIndex];
+                const stackName = timer.label.split(' - ')[0]; // Extract stack name
+                const newLabel = `${stackName} - ${nextPhase.note || `Phase ${nextPhaseIndex + 1}`}`;
+                
+                return {
+                  ...timer,
+                  label: newLabel,
+                  initialDuration: nextPhase.duration,
+                  remainingTime: nextPhase.duration,
+                  currentPhaseIndex: nextPhaseIndex,
+                  note: nextPhase.description || undefined,
+                  isCompleted: false,
+                  isRunning: true // Keep running into next phase
+                };
+              } else {
+                // All phases complete
+                return { 
+                  ...timer, 
+                  remainingTime: 0, 
+                  isCompleted: true,
+                  isRunning: false
+                };
+              }
+            }
+            
+            return { 
+              ...timer, 
+              remainingTime: newRemaining, 
+              isCompleted: isFinished,
+              isRunning: !isFinished
+            };
+          }
+        });
+        return updatedTimers;
+      });
     }, 100);
 
     return () => clearInterval(intervalId);
@@ -192,7 +227,7 @@ function App() {
 
 
   // --- Actions ---
-  const addTimer = (type: TimerType, duration: number, label: string, note?: string) => {
+  const addTimer = (type: TimerType, duration: number, label: string, note?: string, stackData?: { stackId: string, phases: StackedTimer[] }) => {
     const newTimer: Timer = {
       id: crypto.randomUUID(),
       type: type,
@@ -204,9 +239,13 @@ function App() {
       isCompleted: false,
       createdAt: Date.now(),
       pomodoroType: type === 'POMODORO' ? 'FOCUS' : undefined,
-      note: note
+      note: note,
+      stackId: stackData?.stackId,
+      stackPhases: stackData?.phases,
+      currentPhaseIndex: stackData ? 0 : undefined
     };
     setTimers(prev => [...prev, newTimer]);
+    return newTimer.id;
   };
 
   const toggleTimer = (id: string) => {
@@ -263,30 +302,31 @@ function App() {
       // For recurring stacks, create one timer that represents the whole stack
       const totalDuration = stack.timers.reduce((sum, t) => sum + t.duration, 0);
       const phasesList = stack.timers.map((t, i) => `${i + 1}. ${t.note || `Phase ${i + 1}`} (${Math.floor(t.duration / 60)}m)`).join('\n');
-      const note = `🔁 Recurring Stack\n\n${phasesList}`;
+      const note = `Recurring Stack\n\n${phasesList}`;
       
-      const newTimer = addTimer('TIMER', totalDuration, stack.name, note);
-      if (newTimer) {
-        setTimeout(() => toggleTimer(newTimer), 100);
+      const newTimerId = addTimer('TIMER', totalDuration, stack.name, note);
+      if (newTimerId) {
+        setTimeout(() => toggleTimer(newTimerId), 100);
       }
     } else {
-      // For non-recurring stacks, create separate timers for each phase
-      let cumulativeDelay = 0;
+      // For non-recurring stacks, create ONE timer that will progress through phases
+      const firstPhase = stack.timers[0];
+      const firstPhaseName = firstPhase.note || 'Phase 1';
+      const label = `${stack.name} - ${firstPhaseName}`;
+      const note = firstPhase.description || undefined;
       
-      stack.timers.forEach((stackedTimer, index) => {
-        setTimeout(() => {
-          const phaseName = stackedTimer.note || `Phase ${index + 1}`;
-          const note = stackedTimer.description || undefined;
-          const newTimer = addTimer('TIMER', stackedTimer.duration, `${stack.name} - ${phaseName}`, note);
-          
-          // Auto-start the timer
-          if (newTimer) {
-            setTimeout(() => toggleTimer(newTimer), 100);
-          }
-        }, cumulativeDelay);
-        
-        cumulativeDelay += stackedTimer.duration * 1000;
-      });
+      const newTimerId = addTimer(
+        'TIMER',
+        firstPhase.duration,
+        label,
+        note,
+        { stackId: stackId, phases: stack.timers }
+      );
+      
+      // Start the timer
+      if (newTimerId) {
+        setTimeout(() => toggleTimer(newTimerId), 100);
+      }
     }
   };
   useEffect(() => {

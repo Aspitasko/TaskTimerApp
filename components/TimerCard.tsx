@@ -18,6 +18,7 @@ const TimerCard: React.FC<TimerCardProps> = ({ timer, onToggle, onReset, onDelet
   const [isFullscreen, setIsFullscreen] = useState(false);
   const [currentTime, setCurrentTime] = useState<string>('');
   const [currentDate, setCurrentDate] = useState<string>('');
+  const [showToast, setShowToast] = useState(false);
   const [showNoteInput, setShowNoteInput] = useState(false);
   const [noteText, setNoteText] = useState('');
   const editInputRef = useRef<HTMLInputElement>(null);
@@ -60,7 +61,7 @@ const TimerCard: React.FC<TimerCardProps> = ({ timer, onToggle, onReset, onDelet
     }
   }, [timer.isRunning, timer.remainingTime, timer.type, timer.isCompleted]);
 
-  // Sound effect on completion
+  // Sound effect and notification on completion
   const prevCompleted = useRef(timer.isCompleted);
   useEffect(() => {
     if (timer.isCompleted && !prevCompleted.current) {
@@ -70,9 +71,35 @@ const TimerCard: React.FC<TimerCardProps> = ({ timer, onToggle, onReset, onDelet
       } else {
         playChimeSound();
       }
+      
+      // Show on-screen toast notification
+      setShowToast(true);
+      setTimeout(() => setShowToast(false), 5000);
+      
+      // Show browser notification with timer name
+      if ('Notification' in window && Notification.permission === 'granted') {
+        new Notification('⏰ Timer Finished!', {
+          body: `${timer.label} has completed`,
+          icon: '/favicon.ico',
+          tag: timer.id,
+          requireInteraction: false
+        });
+      } else if ('Notification' in window && Notification.permission !== 'denied') {
+        // Request permission if not denied
+        Notification.requestPermission().then(permission => {
+          if (permission === 'granted') {
+            new Notification('⏰ Timer Finished!', {
+              body: `${timer.label} has completed`,
+              icon: '/favicon.ico',
+              tag: timer.id,
+              requireInteraction: false
+            });
+          }
+        });
+      }
     }
     prevCompleted.current = timer.isCompleted;
-  }, [timer.isCompleted, timer.type]);
+  }, [timer.isCompleted, timer.type, timer.label, timer.id]);
 
   // Focus input when editing starts
   useEffect(() => {
@@ -202,6 +229,23 @@ const TimerCard: React.FC<TimerCardProps> = ({ timer, onToggle, onReset, onDelet
 
   return (
     <div className={`relative group w-full ${isFullscreen ? '' : 'max-w-[420px] mx-auto'} transition-all duration-300 animate-fade-in`}>
+      
+      {/* Toast Notification */}
+      {showToast && (
+        <div className="fixed top-24 left-1/2 transform -translate-x-1/2 z-[100] animate-fade-in">
+          <div className="px-6 py-4 rounded-xl bg-gradient-to-r from-green-600 to-emerald-600 text-white shadow-2xl border border-green-500/50 backdrop-blur-sm flex items-center gap-3">
+            <div className="w-8 h-8 rounded-full bg-white/20 flex items-center justify-center">
+              <svg className="w-5 h-5" fill="currentColor" viewBox="0 0 20 20">
+                <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd"/>
+              </svg>
+            </div>
+            <div>
+              <p className="font-bold text-sm">Timer Finished!</p>
+              <p className="text-sm opacity-90">{timer.label}</p>
+            </div>
+          </div>
+        </div>
+      )}
       
       {/* Delete Button - Optimized for Mobile & Desktop */}
       {!isFullscreen && (

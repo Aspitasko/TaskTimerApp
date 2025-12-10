@@ -14,6 +14,9 @@ export interface Timer {
   createdAt: number;
   pomodoroType?: PomodoroType;
   note?: string; // Optional reminder/note
+  stackId?: string; // ID of the stack this timer belongs to
+  stackPhases?: StackedTimer[]; // All phases for stack timers
+  currentPhaseIndex?: number; // Current phase being executed
 }
 
 export interface Preset {
